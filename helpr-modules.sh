@@ -1,9 +1,15 @@
 #!/bin/bash
 
+VERSION="v1.0"
+
+version(){
+  echo "$VERSION"
+}
+
 # HELP FUNCTION FOR GUIDE
 banner() {
   #echo "test"
-  echo -e "██   ██ ███████ ██      ██████  ██████  \n██   ██ ██      ██      ██   ██ ██   ██ \n███████ █████   ██      ██████  ██████  \n██   ██ ██      ██      ██      ██   ██ \n██   ██ ███████ ███████ ██      ██   ██ v1.0\n                         --- BY RUDRADEV PAL\n"
+  echo -e "██   ██ ███████ ██      ██████  ██████  \n██   ██ ██      ██      ██   ██ ██   ██ \n███████ █████   ██      ██████  ██████  \n██   ██ ██      ██      ██      ██   ██ \n██   ██ ███████ ███████ ██      ██   ██ $VERSION\n                         --- BY RUDRADEV PAL\n"
 }
 
 help() {
@@ -100,8 +106,10 @@ test(){
 case "$1" in
   kubeconfig)
     get_kubeconfigs;;
-  versions)
+  get-versions)
     get_latest_versions "${@:2}" ;;
+  version)
+    version;;
   help)
     help;;
   *)
