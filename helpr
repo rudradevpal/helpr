@@ -1,0 +1,23 @@
+#!/bin/bash
+
+echo -ne "\n"
+
+case "$1" in
+  update)
+    echo "Updating Helpr..."
+    STATUS=$(curl -s -w "%{http_code}" https://raw.githubusercontent.com/rudradevpal/helpr/main/helpr-modules.sh --output helpr-modules.sh)
+    if [[ "$STATUS" == "200" ]]
+    then
+      chmod +x helpr-modules.sh
+      echo "Updated to "$(./helpr-modules.sh version)
+    else
+      echo "Update Failed!"
+      echo -e "Error: helpr update - Unknown error. Please check your internet connection\n"
+      exit 1
+    fi
+    ;;
+  *)
+    ./helpr-modules.sh "${@}";;
+esac
+
+echo -ne "\n"
