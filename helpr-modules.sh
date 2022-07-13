@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="v1.1"
+VERSION="v1.0"
 
 version(){
   echo "$VERSION"
@@ -15,6 +15,17 @@ banner() {
 help() {
   banner
   echo "Usage: helpr <OPERATION> [ -k kubeconfig ] [ -n namespace ]" 1>&2
+}
+
+update-check(){
+  REMOTE_VERSION=$(curl -s https://raw.githubusercontent.com/rudradevpal/helpr/main/helpr-modules.sh |grep VERSION= |head -n 1| sed -r 's/\"//g'|sed -r 's/VERSION=//g')
+
+  if [[ ! -z "$REMOTE_VERSION" && "$REMOTE_VERSION" != "$VERSION" ]]
+  then
+    echo "Update available: "$REMOTE_VERSION"."
+  else
+    echo "Helpr is up to date"
+  fi
 }
 
 # GET KUBECONFIGS CREATED BY USER - ONSITE + LOCAL
@@ -110,6 +121,8 @@ case "$1" in
     get_latest_versions "${@:2}" ;;
   version)
     version;;
+  update-check)
+    update-check;;
   help)
     help;;
   *)
