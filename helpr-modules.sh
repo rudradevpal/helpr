@@ -26,7 +26,7 @@ init(){
   then
     echo -e "\tNO"
     echo -e "\tInstalling GCloud SDK..."
-    STATUS=$(sudo apt-get install -y apt-transport-https ca-certificates gnupg &> /dev/null;echo $?)
+    STATUS=$(sudo apt-get install -y apt-transport-https ca-certificates gnupg jq &> /dev/null;echo $?)
     if [[ $STATUS -ne 0 ]]
     then
       echo -e "\tERROR:error installing dependencies"
