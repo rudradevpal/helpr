@@ -46,7 +46,7 @@ get_kubeconfigs(){
   done <<< "$LOCAL_KUBECONFIG"
 }
 
-# GET LOCAL LASTEST VERSIONS
+# GET LASTEST VERSIONS
 get_latest_versions(){
   local OPTIND
   local ONSITE_ENV=false
@@ -97,6 +97,65 @@ get_latest_versions(){
 
 }
 
+# GET POD LOGS
+get_pod_logs(){
+  local OPTIND
+  local ONSITE_ENV=false
+
+  mkdir -p output/logs
+
+  while getopts ":k:n:p:o" options; do
+    case "${options}" in
+      k)
+         KUBECONFIG=${OPTARG};;
+      n)
+         NAMESPACE=${OPTARG};;
+      o)
+         ONSITE_ENV=true;;
+      p)
+         POD_SEARCH_STRING=${OPTARG};;
+      :)
+         echo -e "Error: helpr get-versions - please provide correct flags\n"
+         echo -e "helpr get-versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment."
+         exit 1;;
+      *)
+         echo -e "Error: helpr het-versions - please provide correct flags\n"
+         echo -e "helpr get-versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment."
+         exit 1;;
+    esac
+  done
+
+  if [[ -z "$KUBECONFIG" || -z "$NAMESPACE" || -z "$POD_SEARCH_STRING" ]]
+  then
+    echo -e "Error: helpr get-versions - please provide correct flags\n"
+    echo -e "helpr get-versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment."
+    exit 1
+  fi
+
+  if [ "$ONSITE_ENV" = true ]
+  then
+    KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+    POD_OUTPUT=$(gcloud compute ssh --zone=northamerica-northeast1-a --project cio-nc-cloud-core-np-28a0c4 artifactory --tunnel-through-iap --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get cm version -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'";'| jq '.data')
+  else
+    POD_OUTPUT=$(kubectl get pods -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep $POD_SEARCH_STRING | grep -v Pending | grep -v Failed)
+    echo "$POD_OUTPUT"
+    POD_OUTPUT=$(echo "$POD_OUTPUT" | awk '{print $1}')
+  fi
+
+  echo -e "\n"
+
+  while IFS= read -r line ;
+  do
+    echo -e "Collectiong Logs for" $line"..."
+    OUTPUT=$(kubectl logs $line -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG);
+    if [ $? -eq 0 ]; then
+      echo "$OUTPUT" > "output/logs/"$line".log"
+      echo -e "Log stored in output/logs/"$line".log"
+    fi
+    echo ""
+  done <<< "$POD_OUTPUT"
+}
+
 # JUST A SAMPLE FUNCTION
 test(){
   local OPTIND
@@ -128,6 +187,8 @@ case "$1" in
     get_kubeconfigs;;
   get-versions)
     get_latest_versions "${@:2}" ;;
+  get-logs)
+    get_pod_logs "${@:2}" ;;
   version)
     version;;
   update-check)
