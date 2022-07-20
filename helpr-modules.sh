@@ -8,13 +8,131 @@ version(){
 
 # HELP FUNCTION FOR GUIDE
 banner() {
-  #echo "test"
-  echo -e "██   ██ ███████ ██      ██████  ██████  \n██   ██ ██      ██      ██   ██ ██   ██ \n███████ █████   ██      ██████  ██████  \n██   ██ ██      ██      ██      ██   ██ \n██   ██ ███████ ███████ ██      ██   ██ $VERSION\n                         --- BY RUDRADEV PAL\n"
+  echo "test"
+  #echo -e "██   ██ ███████ ██      ██████  ██████  \n██   ██ ██      ██      ██   ██ ██   ██ \n███████ █████   ██      ██████  ██████  \n██   ██ ██      ██      ██      ██   ██ \n██   ██ ███████ ███████ ██      ██   ██ $VERSION\n                         --- BY RUDRADEV PAL\n"
 }
 
 help() {
   banner
   echo "Usage: helpr <OPERATION> [ -k kubeconfig ] [ -n namespace ]" 1>&2
+}
+
+init(){
+  local STATUS
+  
+  echo "Checking if GCloud SDK Installed..."
+  STATUS=$(gcloud --version &> /dev/null;echo $?)
+  if [[ $STATUS -ne 0 ]]
+  then
+    echo -e "\tNO"
+    echo -e "\tInstalling GCloud SDK..."
+    STATUS=$(sudo apt-get install -y apt-transport-https ca-certificates gnupg &> /dev/null;echo $?)
+    if [[ $STATUS -ne 0 ]]
+    then
+      echo -e "\tERROR:error installing dependencies"
+      exit 1
+    fi
+
+    STATUS=$(echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list &> /dev/null;echo $?)
+    if [[ $STATUS -ne 0 ]]
+    then
+      echo -e "\tERROR: error adding source list"
+      exit 1
+    fi
+
+    STATUS=$(curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - &> /dev/null;echo $?)
+    if [[ $STATUS -ne 0 ]]
+    then
+      echo -e "\tERROR: error gpg check"
+      exit 1
+    fi
+
+    STATUS=$(sudo apt-get update &> /dev/null && sudo apt-get install -y google-cloud-cli &> /dev/null;echo $?)
+    if [[ $STATUS -ne 0 ]]
+    then
+      echo -e "\tERROR: error installing SDK"
+      exit 1
+    fi
+
+    echo -e "\tOK"
+  else
+    echo "OK"
+  fi
+  
+  echo ""
+
+  echo "Checking if kubectl Installed..."
+  STATUS=$(kubectl version --client=true &> /dev/null;echo $?)
+  if [[ $STATUS -ne 0 ]]
+  then
+    echo -e "\tNO"
+    echo -e "\tInstalling kubectl..."
+    STATUS=$(sudo apt-get install -y apt-transport-https ca-certificates curl &> /dev/null;echo $?)
+    if [[ $STATUS -ne 0 ]]
+    then
+      echo -e "\tERROR:error installing dependencies"
+      exit 1
+    fi
+
+    STATUS=$(sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg &> /dev/null;echo $?)
+    if [[ $STATUS -ne 0 ]]
+    then
+      echo -e "\tERROR: error gpg check"
+      exit 1
+    fi
+
+    STATUS=$(echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list &> /dev/null;echo $?)
+    if [[ $STATUS -ne 0 ]]
+    then
+      echo -e "\tERROR: error adding source list"
+      exit 1
+    fi
+
+    STATUS=$(sudo apt-get update &> /dev/null && sudo apt-get install -y kubectl &> /dev/null;echo $?)
+    if [[ $STATUS -ne 0 ]]
+    then
+      echo -e "\tERROR: error installing kubectl"
+      exit 1
+    fi
+
+    echo -e "\tOK"
+  else
+    echo "OK"
+  fi
+  
+  echo ""
+
+  echo "Checking if NumPy Installed..."
+  STATUS=$(python -c "import numpy; print(numpy.version.version)" &> /dev/null || python3 -c "import numpy; print(numpy.version.version)" &> /dev/null;echo $?)
+  if [[ $STATUS -ne 0 ]]
+  then
+    echo -e "\tNO"
+    echo -e "\tInstalling NumPy..."
+    TMP=$(gcloud info --format="value(basic.python_location)")
+    STATUS=$(${TMP} -m pip install numpy &> /dev/null;echo $?)
+    if [[ $STATUS -ne 0 ]]
+    then
+      echo -e "\tERROR: error installing numpy"
+      exit 1
+    fi
+
+    echo -e "\tOK"
+  else
+    echo "OK"
+  fi
+  
+  echo ""
+
+  echo "Checking if GCloud Project is Active..."
+  GCP_PROJECT=$(jq '.gcp_project' config.json | tr -d '[],"')
+  STATUS=$(gcloud config configurations list|grep "$GCP_PROJECT"|awk '{print $2}')
+  if [[ "$STATUS" = "True" ]]
+  then
+    echo "OK"
+  else
+    echo "ERROR: Run 'gcloud init --no-browser' from bash and re-run 'helpr init' For more help visit https://cloud.google.com/sdk/gcloud/reference/init"
+  fi
+  
 }
 
 update-check(){
@@ -193,6 +311,8 @@ test(){
 
 # MAIN SSWITCH CASE
 case "$1" in
+  init)
+    init;;
   get-kubeconfigs)
     get_kubeconfigs;;
   get-versions)
