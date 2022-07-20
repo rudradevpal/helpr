@@ -2,10 +2,17 @@
 
 echo -ne "\n"
 
+UPDATE_AVAILABLE=$(./helpr-modules.sh update-check)
+if [[ "$UPDATE_AVAILABLE" != "Helpr is up to date" ]]
+then
+  echo -e $UPDATE_AVAILABLE"\nRun helpr update to install\n"
+fi
+
+
 case "$1" in
   update)
     echo "Updating Helpr..."
-    STATUS=$(curl -s -w "%{http_code}" https://raw.githubusercontent.com/rudradevpal/helpr/main/helpr-modules.sh --output helpr-modules.sh)
+    STATUS=$(curl -s -H 'Cache-Control: no-cache' -w "%{http_code}" https://raw.githubusercontent.com/rudradevpal/helpr/main/helpr-modules.sh --output helpr-modules.sh)
     if [[ "$STATUS" == "200" ]]
     then
       chmod +x helpr-modules.sh
