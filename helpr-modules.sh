@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="v1.1"
+VERSION="v1.2"
 
 version(){
   echo "$VERSION"
@@ -8,8 +8,8 @@ version(){
 
 # HELP FUNCTION FOR GUIDE
 banner() {
-  echo "test"
-  #echo -e "██   ██ ███████ ██      ██████  ██████  \n██   ██ ██      ██      ██   ██ ██   ██ \n███████ █████   ██      ██████  ██████  \n██   ██ ██      ██      ██      ██   ██ \n██   ██ ███████ ███████ ██      ██   ██ $VERSION\n                         --- BY RUDRADEV PAL\n"
+  #echo "test"
+  echo -e "██   ██ ███████ ██      ██████  ██████  \n██   ██ ██      ██      ██   ██ ██   ██ \n███████ █████   ██      ██████  ██████  \n██   ██ ██      ██      ██      ██   ██ \n██   ██ ███████ ███████ ██      ██   ██ $VERSION\n                         --- BY RUDRADEV PAL\n"
 }
 
 help() {
@@ -18,7 +18,7 @@ help() {
 }
 
 update-check(){
-  REMOTE_VERSION=$(curl -s https://raw.githubusercontent.com/rudradevpal/helpr/main/helpr-modules.sh |grep VERSION= |head -n 1| sed -r 's/\"//g'|sed -r 's/VERSION=//g')
+  REMOTE_VERSION=$(curl -s -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/rudradevpal/helpr/main/helpr-modules.sh |grep VERSION= |head -n 1| sed -r 's/\"//g'|sed -r 's/VERSION=//g')
 
   if [[ ! -z "$REMOTE_VERSION" && "$REMOTE_VERSION" != "$VERSION" ]]
   then
@@ -79,8 +79,9 @@ get_latest_versions(){
   ARTIFACTS=($(jq '.artifacts|keys' config.json | tr -d '[],"'))
   if [ "$ONSITE_ENV" = true ]
   then
+    GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
     KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-    OUTPUT=$(gcloud compute ssh --zone=northamerica-northeast1-a --project cio-nc-cloud-core-np-28a0c4 artifactory --tunnel-through-iap --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get cm version -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'";'| jq '.data')
+    OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get cm version -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'";'| jq '.data')
   else
     OUTPUT=$(kubectl get cm version -n $NAMESPACE -o json --kubeconfig="kubeconfig/local/"$KUBECONFIG | jq '.data';)
   fi
@@ -134,20 +135,29 @@ get_pod_logs(){
 
   if [ "$ONSITE_ENV" = true ]
   then
+    GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
     KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-    POD_OUTPUT=$(gcloud compute ssh --zone=northamerica-northeast1-a --project cio-nc-cloud-core-np-28a0c4 artifactory --tunnel-through-iap --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get cm version -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'";'| jq '.data')
+    POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'";'| tail -n +2 | grep $POD_SEARCH_STRING)
   else
-    POD_OUTPUT=$(kubectl get pods -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep $POD_SEARCH_STRING | grep -v Pending | grep -v Failed)
-    echo "$POD_OUTPUT"
-    POD_OUTPUT=$(echo "$POD_OUTPUT" | awk '{print $1}')
+    POD_OUTPUT=$(kubectl get pods -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep $POD_SEARCH_STRING)
   fi
 
-  echo -e "\n"
+  echo -e "$POD_OUTPUT\n"
+  POD_OUTPUT=$(echo "$POD_OUTPUT" | grep -v Pending | grep -v Failed | awk '{print $1}')
 
   while IFS= read -r line ;
   do
-    echo -e "Collectiong Logs for" $line"..."
-    OUTPUT=$(kubectl logs $line -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG);
+    echo -e "Collecting Logs for" $line" ..."
+
+    if [ "$ONSITE_ENV" = true ]
+    then
+      GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
+      KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+      OUTPUT=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl logs '"$line"' -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'";')
+    else
+      OUTPUT=$(kubectl logs $line -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG);
+    fi
+    
     if [ $? -eq 0 ]; then
       echo "$OUTPUT" > "output/logs/"$line".log"
       echo -e "Log stored in output/logs/"$line".log"
