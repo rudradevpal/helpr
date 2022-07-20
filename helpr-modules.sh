@@ -8,8 +8,8 @@ version(){
 
 # HELP FUNCTION FOR GUIDE
 banner() {
-  #echo "test"
-  echo -e "██   ██ ███████ ██      ██████  ██████  \n██   ██ ██      ██      ██   ██ ██   ██ \n███████ █████   ██      ██████  ██████  \n██   ██ ██      ██      ██      ██   ██ \n██   ██ ███████ ███████ ██      ██   ██ $VERSION\n                         --- BY RUDRADEV PAL\n"
+  echo "test"
+  #echo -e "██   ██ ███████ ██      ██████  ██████  \n██   ██ ██      ██      ██   ██ ██   ██ \n███████ █████   ██      ██████  ██████  \n██   ██ ██      ██      ██      ██   ██ \n██   ██ ███████ ███████ ██      ██   ██ $VERSION\n                         --- BY RUDRADEV PAL\n"
 }
 
 help() {
@@ -22,7 +22,7 @@ update-check(){
 
   if [[ ! -z "$REMOTE_VERSION" && "$REMOTE_VERSION" != "$VERSION" ]]
   then
-    echo "Update available: "$REMOTE_VERSION"."
+    echo "Update available: "$REMOTE_VERSION
   else
     echo "Helpr is up to date"
   fi
@@ -49,41 +49,50 @@ get_kubeconfigs(){
 # GET LOCAL LASTEST VERSIONS
 get_latest_versions(){
   local OPTIND
-  while getopts ":k:n:" options; do
+  local ONSITE_ENV=false
+  while getopts ":k:n:o" options; do
     case "${options}" in
       k)
          KUBECONFIG=${OPTARG};;
       n)
          NAMESPACE=${OPTARG};;
+      o)
+         ONSITE_ENV=true;;
       :)
-         echo -e "Error: helpr versions - please provide correct flags\n"
-         echo -e "helpr versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nversions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run "helpr kubeconfig".\n  -n        Specify the namespace of the target environment."
+         echo -e "Error: helpr get-versions - please provide correct flags\n"
+         echo -e "helpr get-versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment."
          exit 1;;
       *)
-         echo -e "Error: helpr versions - please provide correct flags\n"
-         echo -e "helpr versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nversions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run "helpr kubeconfig".\n  -n        Specify the namespace of the target environment."
+         echo -e "Error: helpr het-versions - please provide correct flags\n"
+         echo -e "helpr get-versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment."
          exit 1;;
     esac
   done
 
   if [[ -z "$KUBECONFIG" || -z "$NAMESPACE" ]]
   then
-    echo -e "Error: helpr versions - please provide correct flags\n"
-    echo -e "helpr versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nversions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run "helpr kubeconfig".\n  -n        Specify the namespace of the target environment."
+    echo -e "Error: helpr get-versions - please provide correct flags\n"
+    echo -e "helpr get-versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment."
     exit 1
   fi
 
-
-
-  ARTIFACTS=($(jq 'keys' artifacts-map.json| tr -d '[],"'))
-  OUTPUT=$(cat test.json)
-  # OUTPUT=$(kubectl get cm version -n  $)
+  ARTIFACTS=($(jq '.artifacts|keys' config.json | tr -d '[],"'))
+  if [ "$ONSITE_ENV" = true ]
+  then
+    KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+    OUTPUT=$(gcloud compute ssh --zone=northamerica-northeast1-a --project cio-nc-cloud-core-np-28a0c4 artifactory --tunnel-through-iap --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get cm version -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'";'| jq '.data')
+  else
+    OUTPUT=$(kubectl get cm version -n $NAMESPACE -o json --kubeconfig="kubeconfig/local/"$KUBECONFIG | jq '.data';)
+  fi
 
   for i in "${ARTIFACTS[@]}"
   do
     ARTIFACT_NAME=$(jq '."'$i'"' artifacts-map.json| sed -r 's/\"//g')
     VERSION=$(echo "$OUTPUT"|grep $i| tail -1| awk -F': ' '{print $2}'| sed -r 's/\"//g'|sed -r 's/,//g')
-    echo $ARTIFACT_NAME:$VERSION
+    if [[ ! -z "$VERSION" ]]
+    then
+      echo $ARTIFACT_NAME:$VERSION
+    fi
   done
 
 }
@@ -115,7 +124,7 @@ test(){
 
 # MAIN SSWITCH CASE
 case "$1" in
-  kubeconfig)
+  get-kubeconfigs)
     get_kubeconfigs;;
   get-versions)
     get_latest_versions "${@:2}" ;;
