@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="v1.2"
+VERSION="v1.3"
 
 version(){
   echo "$VERSION"
@@ -8,13 +8,13 @@ version(){
 
 # HELP FUNCTION FOR GUIDE
 banner() {
-  echo "test"
-  #echo -e "██   ██ ███████ ██      ██████  ██████  \n██   ██ ██      ██      ██   ██ ██   ██ \n███████ █████   ██      ██████  ██████  \n██   ██ ██      ██      ██      ██   ██ \n██   ██ ███████ ███████ ██      ██   ██ $VERSION\n                         --- BY RUDRADEV PAL\n"
+  #echo "test"
+  echo -e "██   ██ ███████ ██      ██████  ██████  \n██   ██ ██      ██      ██   ██ ██   ██ \n███████ █████   ██      ██████  ██████  \n██   ██ ██      ██      ██      ██   ██ \n██   ██ ███████ ███████ ██      ██   ██ $VERSION\n                         --- BY RUDRADEV PAL\n"
 }
 
 help() {
   banner
-  echo "Usage: helpr <OPERATION> [ -k kubeconfig ] [ -n namespace ]" 1>&2
+  echo -e "Helpr Guide:\n\nhelpr version fetch current installed helpr version.\n\nhelpr update-check Checks if newer helpr version is available to install.\n\nhelpr update Update the current helpr version to latest [Internet Required].\n\nhelpr init Initilize helpr. Checks for all dependencies and installs if not present [Internet Required]. For the first use it is recommanded to run this command.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nhelpr get-logs fetchs logs of deployed kubernets PODs from an environment matched by a string. It will fetch logs for all the matched PODs.\n\nget-logs usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -p        Specify the string to match with POD name.\n  -o        (Optional) Specify this flag if it's on-site environment.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -o        (Optional) Specify this flag if it's on-site environment.\n\nFind more information at: https://github.com/rudradevpal/helpr/blob/main/README.md" 1>&2
 }
 
 init(){
@@ -132,7 +132,20 @@ init(){
   else
     echo "ERROR: Run 'gcloud init --no-browser' from bash and re-run 'helpr init' For more help visit https://cloud.google.com/sdk/gcloud/reference/init"
   fi
+
+  echo ""
+
+  echo "Creating directory stracture..."
+  STATUS=$(mkdir -p kubeconfig/{local,onsite} &> /dev/null;echo $?)
+  if [[ $STATUS -ne 0 ]]
+  then
+    echo "ERROR"
+    exit 1
+  else
+    echo "OK"
+  fi
   
+  echo -e "\nPut local & On-Site kubeconfigs in respective directories under kubeconfig/\n\nPut 'config.json' under root directory of helpr"
 }
 
 update-check(){
@@ -168,6 +181,7 @@ get_kubeconfigs(){
 get_latest_versions(){
   local OPTIND
   local ONSITE_ENV=false
+  local ERR_MSG="Error: helpr get-versions - please provide correct flags\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://github.com/rudradevpal/helpr/blob/main/README.md\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -o        (Optional) Specify this flag if it's on-site environment."
   while getopts ":k:n:o" options; do
     case "${options}" in
       k)
@@ -177,20 +191,17 @@ get_latest_versions(){
       o)
          ONSITE_ENV=true;;
       :)
-         echo -e "Error: helpr get-versions - please provide correct flags\n"
-         echo -e "helpr get-versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment."
+         echo -e "$ERR_MSG"
          exit 1;;
       *)
-         echo -e "Error: helpr het-versions - please provide correct flags\n"
-         echo -e "helpr get-versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment."
+         echo -e "$ERR_MSG"
          exit 1;;
     esac
   done
 
   if [[ -z "$KUBECONFIG" || -z "$NAMESPACE" ]]
   then
-    echo -e "Error: helpr get-versions - please provide correct flags\n"
-    echo -e "helpr get-versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment."
+    echo -e "$ERR_MSG"
     exit 1
   fi
 
@@ -220,6 +231,7 @@ get_latest_versions(){
 get_pod_logs(){
   local OPTIND
   local ONSITE_ENV=false
+  local ERR_MSG="Error: helpr get-logs - please provide correct flags\n\nhelpr get-logs fetchs logs of deployed kubernets PODs from an environment matched by a string. It will fetch logs for all the matched PODs.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://github.com/rudradevpal/helpr/blob/main/README.md\n\nget-logs usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -p        Specify the string to match with POD name.\n  -o        (Optional) Specify this flag if it's on-site environment."
 
   mkdir -p output/logs
 
@@ -234,20 +246,17 @@ get_pod_logs(){
       p)
          POD_SEARCH_STRING=${OPTARG};;
       :)
-         echo -e "Error: helpr get-versions - please provide correct flags\n"
-         echo -e "helpr get-versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment."
+         echo -e "$ERR_MSG"
          exit 1;;
       *)
-         echo -e "Error: helpr het-versions - please provide correct flags\n"
-         echo -e "helpr get-versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment."
+         echo -e "$ERR_MSG"
          exit 1;;
     esac
   done
 
   if [[ -z "$KUBECONFIG" || -z "$NAMESPACE" || -z "$POD_SEARCH_STRING" ]]
   then
-    echo -e "Error: helpr get-versions - please provide correct flags\n"
-    echo -e "helpr get-versions fetchs current versions of deployed products from an environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://fake.website.com\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment."
+    echo -e "$ERR_MSG"
     exit 1
   fi
 
@@ -301,7 +310,7 @@ test(){
          exit 1;;
       *)
          echo -e "Error: helpr requires an argument.\n"
-         echo -e "For full guide run $0 help"
+         echo -e "For full guide run helpr help"
          exit 1;;
     esac
   done
