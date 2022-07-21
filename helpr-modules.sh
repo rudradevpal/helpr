@@ -330,8 +330,8 @@ get_pod_logs(){
   done <<< "$POD_OUTPUT"
 }
 
-# CHECK POD ERROR
-get_pod_errors(){
+# CHECK ENV ERROR
+get_env_errors(){
   local OPTIND
   local POD_SEARCH_STRING=""
   local ONSITE_ENV=false
@@ -372,13 +372,60 @@ get_pod_errors(){
   then
     GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
     KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-    POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'";'| tail -n +2 | grep $POD_SEARCH_STRING)
+    DEPLOY_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get deploy -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'";'| tail -n +2)
+  else
+    DEPLOY_OUTPUT=$(kubectl get deploy -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2)
+  fi
+
+  if [ "$ONSITE_ENV" = true ]
+  then
+    GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
+    KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+    POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'";'| tail -n +2 | grep "$POD_SEARCH_STRING")
   else
     POD_OUTPUT=$(kubectl get pods -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep "$POD_SEARCH_STRING")
   fi
 
-  POD_OUTPUT=$(echo "$POD_OUTPUT" | grep 0/)
-  echo -e "$POD_OUTPUT\n"
+  if [ "$POD_OUTPUT" == "No resources found in $NAMESPACE namespace." ]
+  then
+    POD_OUTPUT=""
+  fi
+
+  if [ "$DEPLOY_OUTPUT" == "No resources found in $NAMESPACE namespace." ]
+  then
+    DEPLOY_OUTPUT=""
+  fi
+
+  TMP=""
+  while IFS= read -r line ;
+  do
+    DESIRED=$(echo $line| awk '{print $2}'| awk -F'/' '{print $2}')
+    CURRENT=$(echo $line| awk '{print $2}'| awk -F'/' '{print $1}')
+    if [ "$CURRENT" != "$DESIRED" ]
+    then
+      TMP="$TMP"$"$line"'\n'
+    fi
+  done <<< "$POD_OUTPUT"
+  POD_OUTPUT=$(echo -e "$TMP")
+
+  DEPLOY_OUTPUT=$(echo "$DEPLOY_OUTPUT" | grep 0/0)
+
+  if [ ! -z "$DEPLOY_OUTPUT" ]
+  then
+    echo -e "> Below Deployments were scaled-down\n$DEPLOY_OUTPUT\n"
+    if [ ! -z "$POD_OUTPUT" ]
+    then
+      echo -e "> Below PODs having issues\n$POD_OUTPUT\n"
+    fi
+  else
+    if [ ! -z "$POD_OUTPUT" ]
+    then
+      echo -e "> Below PODs having issues\n$POD_OUTPUT\n"
+    else
+      echo -e "> No issues found in the environment $NAMESPACE"
+      exit 0
+    fi
+  fi
 
   while IFS= read -r line ;
   do
@@ -388,31 +435,44 @@ get_pod_errors(){
     POD_READY=$(echo "$line"|awk '{print $2}')
 
     echo -e ">> Checking error for" $POD_NAME" ..."
-
-    # if [ "$ONSITE_ENV" = true ]
-    # then
-    #   GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
-    #   KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-    #   OUTPUT=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl logs '"$line"' -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'";')
-    # else
-    #   OUTPUT=$(kubectl get po $POD_NAME -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG);
-    # fi
     if [[ -z "$ERR" && "$POD_STATUS" = "ImagePullBackOff" ]]
     then
-      ERR=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o json --kubeconfig="kubeconfig/local/"$KUBECONFIG|jq '.status|.containerStatuses|.[]|.state|.waiting|.message' | tr -d '[],"')
+      if [ "$ONSITE_ENV" = true ]
+      then
+        GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
+        KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+        ERR=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pod '"$POD_NAME"' -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'"|jq ".status|.containerStatuses|.[]|.state|.waiting|.message"' | tr -d '[],"')
+      else
+        ERR=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o json --kubeconfig="kubeconfig/local/"$KUBECONFIG|jq '.status|.containerStatuses|.[]|.state|.waiting|.message' | tr -d '[],"')
+      fi
     elif [[ -z "$ERR" && "$POD_STATUS" = "Pending" ]]
     then
-      ERR=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o json --kubeconfig="kubeconfig/local/"$KUBECONFIG|jq '.status|.conditions|.[]|.message' | tr -d '[],"')
+      if [ "$ONSITE_ENV" = true ]
+      then
+        GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
+        KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+        ERR=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pod '"$POD_NAME"' -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'"|jq ".status|.conditions|.[]|.message"' | tr -d '[],"')
+      else
+        ERR=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o json --kubeconfig="kubeconfig/local/"$KUBECONFIG|jq '.status|.conditions|.[]|.message' | tr -d '[],"')
+      fi
     elif [[ -z "$ERR" && "$POD_STATUS" = "Completed" ]]
     then
       ERR="No error. POD is in completed state."
     elif [[ -z "$ERR" && "$POD_STATUS" = "Running" ]]
     then
-      OUTPUT=$(kubectl logs "$POD_NAME" -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG);
+      if [ "$ONSITE_ENV" = true ]
+      then
+        GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
+        KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+        OUTPUT=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl logs '"$POD_NAME"' -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'";')
+      else
+        OUTPUT=$(kubectl logs "$POD_NAME" -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG);
+      fi
+
       if [ $? -eq 0 ]
       then
         echo "$OUTPUT" > "output/logs/"$POD_NAME".log"
-        echo -e ">>>> Full Log stored in output/logs/"$POD_NAME".log\n>>>> ERROR (Max last 10 Errors):"
+        echo -e ">>>> Full Log stored in output/logs/"$POD_NAME".log"
       fi
 
       ERR=$(echo "$OUTPUT" | grep error | tail -10)
@@ -421,11 +481,8 @@ get_pod_errors(){
         ERR="Did find ay error in the log. Please refer full log."
       fi
     fi
+    echo -e ">>>> ERROR (Max last 10 Errors):"
     echo "$ERR"
-    # if [ $? -eq 0 ]; then
-    #   echo "$OUTPUT" > "output/logs/"$line".log"
-    #   echo -e "Log stored in output/logs/"$line".log"
-    # fi
     echo ""
   done <<< "$POD_OUTPUT"
 }
@@ -466,7 +523,7 @@ case "$1" in
   get-logs)
     get_pod_logs "${@:2}" ;;
   get-env-error)
-    get_pod_errors "${@:2}" ;;
+    get_env_errors "${@:2}" ;;
   version)
     version;;
   update-check)
