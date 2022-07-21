@@ -221,6 +221,7 @@ get_latest_versions(){
   fi
   if [ "$RAW_OUTPUT" = true ]
   then
+    echo ">> VERSIONS (RAW):"
     while IFS= read -r line ;
     do
       RAW_VERSION=$(echo "$line"| sed -r 's/\"//g'|sed -r 's/,//g')
@@ -232,6 +233,7 @@ get_latest_versions(){
   else
     if [ "$FULL_OUTPUT" = true ]
     then
+      echo ">> VERSIONS (FULL):"
       for i in "${ARTIFACTS[@]}"
       do
         ARTIFACT_NAME=$(jq '.artifacts|."'$i'"' config.json| sed -r 's/\"//g')
@@ -245,9 +247,9 @@ get_latest_versions(){
             echo $ARTIFACT_NAME:$THIS_VERSION
           fi
         done <<< "$VERSION"
-
       done
     else
+      echo ">> VERSIONS (LATEST):"
       for i in "${ARTIFACTS[@]}"
       do
         ARTIFACT_NAME=$(jq '.artifacts|."'$i'"' config.json| sed -r 's/\"//g')
@@ -322,7 +324,7 @@ get_pod_logs(){
     
     if [ $? -eq 0 ]; then
       echo "$OUTPUT" > "output/logs/"$line".log"
-      echo -e "Log stored in output/logs/"$line".log"
+      echo -e ">>>> Log stored in output/logs/"$line".log"
     fi
     echo ""
   done <<< "$POD_OUTPUT"
