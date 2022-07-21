@@ -215,7 +215,7 @@ get_latest_versions(){
   then
     GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
     KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-    OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get cm version -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'"| jq ".data" | tail -n +2 | head -n -1 > helpr/output; cat helpr/output;')
+    OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get cm version -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'"| jq ".data" | tail -n +2 | head -n -1 > helpr/output; cat helpr/output; exit 0')
   else
     OUTPUT=$(kubectl get cm version -n $NAMESPACE -o json --kubeconfig="kubeconfig/local/"$KUBECONFIG | jq '.data' | tail -n +2 | head -n -1;)
   fi
@@ -301,7 +301,7 @@ get_pod_logs(){
   then
     GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
     KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-    POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'";'| tail -n +2 | grep $POD_SEARCH_STRING)
+    POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0'| tail -n +2 | grep $POD_SEARCH_STRING)
   else
     POD_OUTPUT=$(kubectl get pods -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep $POD_SEARCH_STRING)
   fi
@@ -317,7 +317,7 @@ get_pod_logs(){
     then
       GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
       KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-      OUTPUT=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl logs '"$line"' -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'";')
+      OUTPUT=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl logs '"$line"' -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0')
     else
       OUTPUT=$(kubectl logs $line -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG);
     fi
@@ -372,7 +372,7 @@ get_env_errors(){
   then
     GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
     KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-    DEPLOY_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get deploy -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'";'| tail -n +2)
+    DEPLOY_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get deploy -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0'| tail -n +2)
   else
     DEPLOY_OUTPUT=$(kubectl get deploy -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2)
   fi
@@ -381,7 +381,7 @@ get_env_errors(){
   then
     GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
     KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-    POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'";'| tail -n +2 | grep "$POD_SEARCH_STRING")
+    POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0'| tail -n +2 | grep "$POD_SEARCH_STRING")
   else
     POD_OUTPUT=$(kubectl get pods -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep "$POD_SEARCH_STRING")
   fi
@@ -441,7 +441,7 @@ get_env_errors(){
       then
         GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
         KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-        ERR=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pod '"$POD_NAME"' -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'"|jq ".status|.containerStatuses|.[]|.state|.waiting|.message"' | tr -d '[],"')
+        ERR=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pod '"$POD_NAME"' -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'"|jq ".status|.containerStatuses|.[]|.state|.waiting|.message"; exit 0' | tr -d '[],"')
       else
         ERR=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o json --kubeconfig="kubeconfig/local/"$KUBECONFIG|jq '.status|.containerStatuses|.[]|.state|.waiting|.message' | tr -d '[],"')
       fi
@@ -451,25 +451,25 @@ get_env_errors(){
       then
         GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
         KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-        ERR=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pod '"$POD_NAME"' -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'"|jq ".status|.conditions|.[]|.message"' | tr -d '[],"')
+        ERR=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pod '"$POD_NAME"' -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'"|jq ".status|.conditions|.[]|.message";  exit 0' | tr -d '[],"')
       else
         ERR=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o json --kubeconfig="kubeconfig/local/"$KUBECONFIG|jq '.status|.conditions|.[]|.message' | tr -d '[],"')
       fi
     elif [[ -z "$ERR" && "$POD_STATUS" = "Completed" ]]
     then
       ERR="No error. POD is in completed state."
-    elif [[ -z "$ERR" && "$POD_STATUS" = "Running" ]]
+    elif [[ -z "$ERR" && "$POD_STATUS" = "Running" || "$POD_STATUS" = "CrashLoopBackOff" ]]
     then
       if [ "$ONSITE_ENV" = true ]
       then
         GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
         KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-        OUTPUT=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl logs '"$POD_NAME"' -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'";')
+        OUTPUT=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl logs '"$POD_NAME"' -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0')
       else
         OUTPUT=$(kubectl logs "$POD_NAME" -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG);
       fi
 
-      if [ $? -eq 0 ]
+      if [[ $? -eq 0 && ! -z "$OUTPUT" ]]
       then
         echo "$OUTPUT" > "output/logs/"$POD_NAME".log"
         echo -e ">>>> Full Log stored in output/logs/"$POD_NAME".log"
