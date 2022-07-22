@@ -1,7 +1,7 @@
 #!/bin/bash
 
 VERSION="v1.5"
-DETAILS="> CHANGELOG:\n>> 'get-env-error' added\n> KNOWN ISSUES:>> Onsite operations are sometime stuck - Need to press enter"
+DETAILS="> CHANGELOG:\n>> 'get-env-error' added\n\n> KNOWN ISSUES:\n>> Onsite operations are sometime stuck - Need to press enter"
 
 version(){
   echo -e "$VERSION"
