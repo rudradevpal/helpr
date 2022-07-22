@@ -1,9 +1,10 @@
 #!/bin/bash
 
-VERSION="v1.4"
+VERSION="v1.5"
+DETAILS="> CHANGELOG:\n>> 'get-env-error' added\n> KNOWN ISSUES:>> Onsite operations are sometime stuck - Need to press enter"
 
 version(){
-  echo "$VERSION"
+  echo -e "$VERSION"
 }
 
 # HELP FUNCTION FOR GUIDE
@@ -14,7 +15,7 @@ banner() {
 
 help() {
   banner
-  echo -e "Helpr Guide:\n\nhelpr version fetch current installed helpr version.\n\nhelpr update-check Checks if newer helpr version is available to install.\n\nhelpr update Update the current helpr version to latest [Internet Required].\n\nhelpr init Initilize helpr. Checks for all dependencies and installs if not present [Internet Required]. For the first use it is recommanded to run this command.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nhelpr get-logs fetchs logs of deployed kubernets PODs from an environment matched by a string. It will fetch logs for all the matched PODs.\n\nget-logs usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -p        Specify the string to match with POD name.\n  -o        (Optional) Specify this flag if it's on-site environment.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -o        (Optional) Specify this flag if it's on-site environment.\n  -f        (Optional) Specify this flag if it's you want to see all deployed versions.\n  -r        (Optional) Specify this flag if it's you want to see all deployed versions in raw format.\n\nFind more information at: https://github.com/rudradevpal/helpr/blob/main/README.md" 1>&2
+  echo -e "Helpr Guide:\n\nhelpr version fetch current installed helpr version.\n\nhelpr update-check Checks if newer helpr version is available to install.\n\nhelpr update Update the current helpr version to latest [Internet Required].\n\nhelpr init Initilize helpr. Checks for all dependencies and installs if not present [Internet Required]. For the first use it is recommanded to run this command.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nhelpr get-logs fetchs logs of deployed kubernets PODs from an environment matched by a string. It will fetch logs for all the matched PODs.\n\nget-logs usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -p        Specify the string to match with POD name.\n  -o        (Optional) Specify this flag if it's on-site environment.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -o        (Optional) Specify this flag if it's on-site environment.\n  -f        (Optional) Specify this flag if it's you want to see all deployed versions.\n  -r        (Optional) Specify this flag if it's you want to see all deployed versions in raw format.\n\nhelpr get-env-error checks for any error in a deployed environment (Scale-Down issues, POD issues, Error logs). It will also fetch logs for all the error PODs.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://github.com/rudradevpal/helpr/blob/main/README.md\n\nget-env-error usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -s        (Optional) Specify the string to search (for example app name).\n  -o        (Optional) Specify this flag if it's on-site environment.\n\nFind more information at: https://github.com/rudradevpal/helpr/blob/main/README.md" 1>&2
 }
 
 init(){
@@ -149,13 +150,40 @@ init(){
 }
 
 update-check(){
-  REMOTE_VERSION=$(curl -s -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/rudradevpal/helpr/main/helpr-modules.sh |grep VERSION= |head -n 1| sed -r 's/\"//g'|sed -r 's/VERSION=//g')
+  local SHORT=false
+  local OPTIND
+  while getopts ":s" options; do
+    case "${options}" in
+      s)
+         SHORT=true;;
+      :)
+         echo -e "Error\n"
+         echo -e "For full guide run helpr help"
+         exit 1;;
+      *)
+         echo -e "Error\n"
+         echo -e "For full guide run helpr help"
+         exit 1;;
+    esac
+  done
 
-  if [[ ! -z "$REMOTE_VERSION" && "$REMOTE_VERSION" != "$VERSION" ]]
+  REMOTE_VERSION=$(curl -s -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/rudradevpal/helpr/main/helpr-modules.sh |grep VERSION= |head -n 1| sed -r 's/\"//g'|sed -r 's/VERSION=//g')
+  if [ "$SHORT" = false ]
   then
-    echo "Update available: "$REMOTE_VERSION
+    REMOTE_DETAILS=$(curl -s -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/rudradevpal/helpr/main/helpr-modules.sh |grep DETAILS= |head -n 1| sed -r 's/\"//g'|sed -r 's/DETAILS=//g')
+    if [[ ! -z "$REMOTE_VERSION" && "$REMOTE_VERSION" != "$VERSION" ]]
+    then
+      echo -e "Update available: $REMOTE_VERSION\n$REMOTE_DETAILS"
+    else
+      echo "Helpr is up to date"
+    fi
   else
-    echo "Helpr is up to date"
+    if [[ ! -z "$REMOTE_VERSION" && "$REMOTE_VERSION" != "$VERSION" ]]
+    then
+      echo -e "Update available: $REMOTE_VERSION"
+    else
+      echo "Helpr is up to date"
+    fi
   fi
 }
 
@@ -237,7 +265,7 @@ get_latest_versions(){
       for i in "${ARTIFACTS[@]}"
       do
         ARTIFACT_NAME=$(jq '.artifacts|."'$i'"' config.json| sed -r 's/\"//g')
-        VERSION=$(echo "$OUTPUT"|grep $i)
+        VERSION=$(echo "$OUTPUT"|grep "$i.")
 
         while IFS= read -r line ;
         do
@@ -253,15 +281,27 @@ get_latest_versions(){
       for i in "${ARTIFACTS[@]}"
       do
         ARTIFACT_NAME=$(jq '.artifacts|."'$i'"' config.json| sed -r 's/\"//g')
-        VERSION=$(echo "$OUTPUT"|grep $i| tail -1| awk -F': ' '{print $2}'| sed -r 's/\"//g'|sed -r 's/,//g')
-        if [[ ! -z "$VERSION" ]]
+        if [[ "$i" == *"datafix"* ]]
         then
-          echo $ARTIFACT_NAME:$VERSION
+          MULTI_OUTPUT=$(echo "$OUTPUT"|grep "$i.")
+          while IFS= read -r line ;
+          do
+            VERSION=$(echo "$line"| awk -F': ' '{print $2}'| sed -r 's/\"//g'|sed -r 's/,//g')
+            if [[ ! -z "$VERSION" ]]
+            then
+              echo $ARTIFACT_NAME:$VERSION
+            fi
+          done <<< "$MULTI_OUTPUT"
+        else
+          VERSION=$(echo "$OUTPUT"|grep "$i."| tail -1| awk -F': ' '{print $2}'| sed -r 's/\"//g'|sed -r 's/,//g')
+          if [[ ! -z "$VERSION" ]]
+          then
+            echo $ARTIFACT_NAME:$VERSION
+          fi
         fi
       done
     fi
   fi
-
 }
 
 # GET POD LOGS
@@ -333,17 +373,17 @@ get_pod_logs(){
 # CHECK ENV ERROR
 get_env_errors(){
   local OPTIND
-  local POD_SEARCH_STRING=""
+  local SEARCH_STRING=""
   local ONSITE_ENV=false
   local POD_NAME=""
   local POD_STATUS=""
   local POD_READY=""
   local ERR=""
-  local ERR_MSG="Error: helpr get-logs - please provide correct flags\n\nhelpr get-logs fetchs logs of deployed kubernets PODs from an environment matched by a string. It will fetch logs for all the matched PODs.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://github.com/rudradevpal/helpr/blob/main/README.md\n\nget-logs usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -p        Specify the string to match with POD name.\n  -o        (Optional) Specify this flag if it's on-site environment."
+  local ERR_MSG="Error: helpr get-env-error - please provide correct flags\n\nhelpr get-env-error checks for any error in a deployed environment (Scale-Down issues, POD issues, Error logs). It will also fetch logs for all the error PODs.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://github.com/rudradevpal/helpr/blob/main/README.md\n\nget-env-error usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -s        (Optional) Specify the string to search (for example app name).\n  -o        (Optional) Specify this flag if it's on-site environment."
 
   mkdir -p output/logs
 
-  while getopts ":k:n:p:o" options; do
+  while getopts ":k:n:s:o" options; do
     case "${options}" in
       k)
          KUBECONFIG=${OPTARG};;
@@ -351,8 +391,8 @@ get_env_errors(){
          NAMESPACE=${OPTARG};;
       o)
          ONSITE_ENV=true;;
-      p)
-         POD_SEARCH_STRING=${OPTARG};;
+      s)
+         SEARCH_STRING=${OPTARG};;
       :)
          echo -e "$ERR_MSG"
          exit 1;;
@@ -372,18 +412,18 @@ get_env_errors(){
   then
     GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
     KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-    DEPLOY_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get deploy -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0'| tail -n +2)
+    DEPLOY_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get deploy -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0'| tail -n +2 | grep "$SEARCH_STRING")
   else
-    DEPLOY_OUTPUT=$(kubectl get deploy -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2)
+    DEPLOY_OUTPUT=$(kubectl get deploy -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep "$SEARCH_STRING")
   fi
 
   if [ "$ONSITE_ENV" = true ]
   then
     GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
     KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
-    POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0'| tail -n +2 | grep "$POD_SEARCH_STRING")
+    POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0'| tail -n +2 | grep "$SEARCH_STRING")
   else
-    POD_OUTPUT=$(kubectl get pods -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep "$POD_SEARCH_STRING")
+    POD_OUTPUT=$(kubectl get pods -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep "$SEARCH_STRING")
   fi
 
   if [ "$POD_OUTPUT" == "No resources found in $NAMESPACE namespace." ]
@@ -527,7 +567,7 @@ case "$1" in
   version)
     version;;
   update-check)
-    update-check;;
+    update-check "${@:2}";;
   help)
     help;;
   *)
