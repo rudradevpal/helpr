@@ -150,6 +150,7 @@ init(){
 }
 
 update-check(){
+  #echo $DETAILS
   local SHORT=false
   local OPTIND
   while getopts ":s" options; do
