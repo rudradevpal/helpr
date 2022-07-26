@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="v1.5"
+VERSION="v1.6"
 DETAILS="> CHANGELOG:\n>> 'get-env-error' added\n\n> KNOWN ISSUES:\n>> Onsite operations are sometime stuck - Need to press enter"
 
 version(){
@@ -9,25 +9,64 @@ version(){
 
 # HELP FUNCTION FOR GUIDE
 banner() {
-  #echo "test"
   echo -e "██   ██ ███████ ██      ██████  ██████  \n██   ██ ██      ██      ██   ██ ██   ██ \n███████ █████   ██      ██████  ██████  \n██   ██ ██      ██      ██      ██   ██ \n██   ██ ███████ ███████ ██      ██   ██ $VERSION\n                         --- BY RUDRADEV PAL\n"
 }
 
 help() {
   banner
-  echo -e "Helpr Guide:\n\nhelpr version fetch current installed helpr version.\n\nhelpr update-check Checks if newer helpr version is available to install.\n\nhelpr update Update the current helpr version to latest [Internet Required].\n\nhelpr init Initilize helpr. Checks for all dependencies and installs if not present [Internet Required]. For the first use it is recommanded to run this command.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nhelpr get-logs fetchs logs of deployed kubernets PODs from an environment matched by a string. It will fetch logs for all the matched PODs.\n\nget-logs usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -p        Specify the string to match with POD name.\n  -o        (Optional) Specify this flag if it's on-site environment.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -o        (Optional) Specify this flag if it's on-site environment.\n  -f        (Optional) Specify this flag if it's you want to see all deployed versions.\n  -r        (Optional) Specify this flag if it's you want to see all deployed versions in raw format.\n\nhelpr get-env-error checks for any error in a deployed environment (Scale-Down issues, POD issues, Error logs). It will also fetch logs for all the error PODs.\n\nget-env-error usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -s        (Optional) Specify the string to search (for example app name).\n  -o        (Optional) Specify this flag if it's on-site environment.\n\nFind more information at: https://github.com/rudradevpal/helpr/blob/main/README.md" 1>&2
+  echo -e "Helpr Guide:\n\nhelpr version fetch current installed helpr version.\n\nhelpr update-check Checks if newer helpr version is available to install.\n\nhelpr update Update the current helpr version to latest [Internet Required].\n\nhelpr init Initilize helpr. Checks for all dependencies and installs if not present [Internet Required]. For the first use it is recommanded to run this command.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nhelpr get-logs fetchs logs of deployed kubernets PODs from an environment matched by a string. It will fetch logs for all the matched PODs.\n\nget-logs usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -p        Specify the string to match with POD name.\n  -o        (Optional) Specify this flag if it's on-site environment.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -o        (Optional) Specify this flag if it's on-site environment.\n  -f        (Optional) Specify this flag if it's you want to see all deployed versions.\n  -r        (Optional) Specify this flag if it's you want to see all deployed versions in raw format.\n\nhelpr get-env-error checks for any error in a deployed environment (Scale-Down issues, POD issues, Error logs). It will also fetch logs for all the error PODs.\n\nget-env-error usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -s        (Optional) Specify the string to search (for example app name).\n  -o        (Optional) Specify this flag if it's on-site environment.\n\nhelpr get-maas-error checks for any error in a deployed environment related to maas. It will automatically fetch the MaaS configuration from the namespace. It will check for MaaS health, MaaS Kafka Users, MaaS Kafka configuration and the configuration done in the target environment.\n\nget-maas-error usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -o        (Optional) Specify this flag if it's on-site environment. On-Site for this operation is currently not implemented.\n\nFind more information at: https://github.com/rudradevpal/helpr/blob/main/README.md" 1>&2
 }
 
 init(){
   local STATUS
   
+  echo "Checking if Python3 Installed..."
+  STATUS=$(python3 --version &> /dev/null;echo $?)
+  if [[ $STATUS -ne 0 ]]
+  then
+    echo -e "\tNO"
+    echo -e "\tInstalling Python3..."
+    STATUS=$(sudo apt-get install -y python3 &> /dev/null;echo $?)
+    if [[ $STATUS -ne 0 ]]
+    then
+      echo -e "\tERROR: error installing Python3"
+      exit 1
+    fi
+
+    echo -e "\tOK"
+  else
+    echo "OK"
+  fi
+  
+  echo ""
+
+  echo "Checking if PIP3 Installed..."
+  STATUS=$(pip3 --version &> /dev/null;echo $?)
+  if [[ $STATUS -ne 0 ]]
+  then
+    echo -e "\tNO"
+    echo -e "\tInstalling PIP3..."
+    STATUS=$(sudo apt-get install -y python3-pip &> /dev/null;echo $?)
+    if [[ $STATUS -ne 0 ]]
+    then
+      echo -e "\tERROR: error installing PIP3"
+      exit 1
+    fi
+
+    echo -e "\tOK"
+  else
+    echo "OK"
+  fi
+  
+  echo ""
+
   echo "Checking if GCloud SDK Installed..."
   STATUS=$(gcloud --version &> /dev/null;echo $?)
   if [[ $STATUS -ne 0 ]]
   then
     echo -e "\tNO"
     echo -e "\tInstalling GCloud SDK..."
-    STATUS=$(sudo apt-get install -y apt-transport-https ca-certificates gnupg jq &> /dev/null;echo $?)
+    STATUS=$(sudo apt-get install -y apt-transport-https ca-certificates gnupg &> /dev/null;echo $?)
     if [[ $STATUS -ne 0 ]]
     then
       echo -e "\tERROR:error installing dependencies"
@@ -114,6 +153,26 @@ init(){
     if [[ $STATUS -ne 0 ]]
     then
       echo -e "\tERROR: error installing numpy"
+      exit 1
+    fi
+
+    echo -e "\tOK"
+  else
+    echo "OK"
+  fi
+  
+  echo ""
+
+  echo "Checking if JQ Installed..."
+  STATUS=$(jq --version &> /dev/null;echo $?)
+  if [[ $STATUS -ne 0 ]]
+  then
+    echo -e "\tNO"
+    echo -e "\tInstalling JQ..."
+    STATUS=$(sudo apt-get install -y jq &> /dev/null;echo $?)
+    if [[ $STATUS -ne 0 ]]
+    then
+      echo -e "\tERROR: error installing JQ"
       exit 1
     fi
 
@@ -527,6 +586,119 @@ get_env_errors(){
   done <<< "$POD_OUTPUT"
 }
 
+# GET MASS ERROR
+get_maas_error(){
+  local OPTIND
+  local ONSITE_ENV=false
+  local USER_PRESENT=false
+  local ERR_MSG="Error: helpr get-maas-error - please provide correct flags\n\nhelpr get-maas-error checks for any error in a deployed environment related to maas. It will automatically fetch the MaaS configuration from the namespace. It will check for MaaS health, MaaS Kafka Users, MaaS Kafka configuration and the configuration done in the target environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://github.com/rudradevpal/helpr/blob/main/README.md\n\nget-maas-error usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -o        (Optional) Specify this flag if it's on-site environment. On-Site for this operation is currently not implemented."
+
+  mkdir -p output/logs
+
+  while getopts ":k:n:o" options; do
+    case "${options}" in
+      k)
+         KUBECONFIG=${OPTARG};;
+      n)
+         NAMESPACE=${OPTARG};;
+      o)
+         ONSITE_ENV=true;;
+      :)
+         echo -e "$ERR_MSG"
+         exit 1;;
+      *)
+         echo -e "$ERR_MSG"
+         exit 1;;
+    esac
+  done
+
+  if [[ -z "$KUBECONFIG" || -z "$NAMESPACE" ]]
+  then
+    echo -e "$ERR_MSG"
+    exit 1
+  fi
+
+  echo -e "> MAAS KAFKA CONFIG\n"
+
+  if [ "$ONSITE_ENV" = true ]
+  then
+    echo "ONSITE get-maas-error is not currently available"
+    echo -e "$ERR_MSG"
+    exit 1
+    # GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
+    # KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+    # POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0'| tail -n +2 | grep $POD_SEARCH_STRING)
+  else
+    MAAS_NAMESPACE=$(kubectl get deployments --output=jsonpath="{.items[*].spec.template.spec.containers[*].env[?(@.name==\"MAAS_INTERNAL_ADDRESS\")]}" -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | jq '.value'|sed -e "s/http:\/\///g" | sed -e "s/\"//g" | sed -e "s/\:8080//g"| awk -F'.' '{print $2}')
+    MAAS_INGRESS="https://"$(kubectl get ingress -n $MAAS_NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | awk '{print $3}')
+    MAAS_HEALTH=$(curl -ks --request GET $MAAS_INGRESS"/health")
+  fi
+  echo -e ">> MaaS URL: $MAAS_INGRESS\n"
+
+  MAAS_OVERALL_HEALTH=$(echo "$MAAS_HEALTH" | jq ".status" | sed -e "s/\"//g")
+  if [ "$MAAS_OVERALL_HEALTH" != "UP" ]
+  then
+    echo ">> MaaS Health ERROR: "$MAAS_HEALTH
+  else
+    MAAS_TOKEN=$(jq '.maas_auth_token' config.json | tr -d '[],"')
+    MAAS_KAFKA_CONFIG=$(curl -sk --request GET $MAAS_INGRESS'/api/v1/kafka/instances' --header 'Authorization: Basic '$MAAS_TOKEN)
+    KAFKA_SECURITY_PROTOCOL_CONFIG=$(echo "$MAAS_KAFKA_CONFIG" | jq '.[] |.addresses|keys[]'  | sed -e "s/\"//g" )
+    KAFKA_AUTHENTICATION_USERS=$(echo "$MAAS_KAFKA_CONFIG" | jq '.[] |.credentials|keys[]'  | sed -e "s/\"//g" )
+        
+    USERS_ARRAY=($KAFKA_AUTHENTICATION_USERS)
+    
+    for u in "${USERS_ARRAY[@]}"; do
+      if [[ "$u" == "client" ]]; then
+          USER_PRESENT=true
+          break
+      fi
+    done
+
+    if [ ! "$USER_PRESENT" = true ]
+    then
+      echo ">> Client user not present for kafka in MaaS"
+      exit 1
+    fi
+
+    KAFKA_AUTHENTICATION_MECHANISM=$(echo "$MAAS_KAFKA_CONFIG" | jq '.[] |.credentials|.client|.[]|.type'  | sed -e "s/\"//g" )
+
+    if [[ "$KAFKA_AUTHENTICATION_MECHANISM" == "PLAIN" ]]
+    then
+      KAFKA_SASL_MECHANISM="PLAIN"
+    else
+      KAFKA_SASL_MECHANISM="SCRAM-SHA-512"
+    fi
+
+    echo -e ">> Current Kafka configuration in MaaS\nKAFKA_SASL_MECHANISM=$KAFKA_SASL_MECHANISM\nKAFKA_SECURITY_PROTOCOL_CONFIG=$KAFKA_SECURITY_PROTOCOL_CONFIG\nKAFKA_AUTHENTICATION_MECHANISM=$KAFKA_AUTHENTICATION_MECHANISM"
+    echo ""
+
+    CURRENT_KAFKA_SASL_MECHANISM=$(kubectl get deploy dpt-data-access --namespace=wireless-ci1 -o json  --kubeconfig="kubeconfig/local/kube_sow501"| jq '.spec|.template|.spec|.containers|.[0]|.env|.[]|select(.name == "KAFKA_SASL_MECHANISM")|.value' | sed -e "s/\"//g")
+    CURRENT_KAFKA_SECURITY_PROTOCOL_CONFIG=$(kubectl get deploy dpt-data-access --namespace=wireless-ci1 -o json  --kubeconfig="kubeconfig/local/kube_sow501"| jq '.spec|.template|.spec|.containers|.[0]|.env|.[]|select(.name == "KAFKA_SECURITY_PROTOCOL_CONFIG")|.value' | sed -e "s/\"//g")
+    CURRENT_KAFKA_AUTHENTICATION_MECHANISM=$(kubectl get deploy dpt-data-access --namespace=wireless-ci1 -o json  --kubeconfig="kubeconfig/local/kube_sow501"| jq '.spec|.template|.spec|.containers|.[0]|.env|.[]|select(.name == "KAFKA_AUTHENTICATION_MECHANISM")|.value' | sed -e "s/\"//g")
+    
+    if [[ "$CURRENT_KAFKA_SASL_MECHANISM" == "$KAFKA_SASL_MECHANISM" && "$CURRENT_KAFKA_SECURITY_PROTOCOL_CONFIG" == "$KAFKA_SECURITY_PROTOCOL_CONFIG" && "$CURRENT_KAFKA_AUTHENTICATION_MECHANISM" == "$KAFKA_AUTHENTICATION_MECHANISM" ]]
+    then
+      echo ">> Namespace $NAMESPACE is configured correctly!"
+    else
+      if [[ "$CURRENT_KAFKA_SASL_MECHANISM" != "$KAFKA_SASL_MECHANISM" ]]
+      then
+        echo ">> Wrong KAFKA_SASL_MECHANISM value $CURRENT_KAFKA_SASL_MECHANISM in the Namespace $NAMESPACE"
+      fi
+
+      if [[ "$CURRENT_KAFKA_SECURITY_PROTOCOL_CONFIG" != "$KAFKA_SECURITY_PROTOCOL_CONFIG" ]]
+      then
+        echo ">> Wrong KAFKA_SECURITY_PROTOCOL_CONFIG value $CURRENT_KAFKA_SECURITY_PROTOCOL_CONFIG in the Namespace $NAMESPACE"
+      fi
+
+      if [[ "$CURRENT_KAFKA_AUTHENTICATION_MECHANISM" != "$KAFKA_AUTHENTICATION_MECHANISM" ]]
+      then
+        echo ">> Wrong KAFKA_AUTHENTICATION_MECHANISM value $CURRENT_KAFKA_AUTHENTICATION_MECHANISM in the Namespace $NAMESPACE"
+      fi
+      exit 1
+    fi
+  fi
+}
+
 # JUST A SAMPLE FUNCTION
 test(){
   local OPTIND
@@ -564,6 +736,8 @@ case "$1" in
     get_pod_logs "${@:2}" ;;
   get-env-error)
     get_env_errors "${@:2}" ;;
+  get-maas-error)
+    get_maas_error "${@:2}" ;;
   version)
     version;;
   update-check)
