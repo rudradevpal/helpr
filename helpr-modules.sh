@@ -1,7 +1,7 @@
 #!/bin/bash
 
-VERSION="v1.6"
-DETAILS="> CHANGELOG:\n>> 'get-env-error' added\n\n> KNOWN ISSUES:\n>> Onsite operations are sometime stuck - Need to press enter"
+VERSION="v1.7"
+DETAILS="> CHANGELOG:\n>> 'start-web' added\n>> 'stop-web' added\n\n> KNOWN ISSUES:\n>> Onsite operations are sometime stuck - Need to press enter"
 
 version(){
   echo -e "$VERSION"
@@ -14,7 +14,7 @@ banner() {
 
 help() {
   banner
-  echo -e "Helpr Guide:\n\nhelpr version fetch current installed helpr version.\n\nhelpr update-check Checks if newer helpr version is available to install.\n\nhelpr update Update the current helpr version to latest [Internet Required].\n\nhelpr init Initilize helpr. Checks for all dependencies and installs if not present [Internet Required]. For the first use it is recommanded to run this command.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nhelpr get-logs fetchs logs of deployed kubernets PODs from an environment matched by a string. It will fetch logs for all the matched PODs.\n\nget-logs usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -p        Specify the string to match with POD name.\n  -o        (Optional) Specify this flag if it's on-site environment.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -o        (Optional) Specify this flag if it's on-site environment.\n  -f        (Optional) Specify this flag if it's you want to see all deployed versions.\n  -r        (Optional) Specify this flag if it's you want to see all deployed versions in raw format.\n\nhelpr get-env-error checks for any error in a deployed environment (Scale-Down issues, POD issues, Error logs). It will also fetch logs for all the error PODs.\n\nget-env-error usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -s        (Optional) Specify the string to search (for example app name).\n  -o        (Optional) Specify this flag if it's on-site environment.\n\nhelpr get-maas-error checks for any error in a deployed environment related to maas. It will automatically fetch the MaaS configuration from the namespace. It will check for MaaS health, MaaS Kafka Users, MaaS Kafka configuration and the configuration done in the target environment.\n\nget-maas-error usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -o        (Optional) Specify this flag if it's on-site environment. On-Site for this operation is currently not implemented.\n\nFind more information at: https://github.com/rudradevpal/helpr/blob/main/README.md" 1>&2
+  echo -e "Helpr Guide:\n\nhelpr version fetch current installed helpr version.\n\nhelpr update-check Checks if newer helpr version is available to install.\n\nhelpr update Update the current helpr version to latest [Internet Required].\n\nhelpr init Initilize helpr. Checks for all dependencies and installs if not present [Internet Required]. For the first use it is recommanded to run this command.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nhelpr start-web starts a web-server to access output files like logs etc from host. For this your virtualbox port 8000 need to be forwarded to host port and from host access guest logs and other outputs through browser.\n\nhelpr stop-web stops the web-server to access output files like logs etc from host.\n\nhelpr get-logs fetchs logs of deployed kubernets PODs from an environment matched by a string. It will fetch logs for all the matched PODs.\n\nget-logs usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -p        Specify the string to match with POD name.\n  -o        (Optional) Specify this flag if it's on-site environment.\n\nhelpr get-versions fetchs current versions of deployed products from an environment.\n\nget-versions usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -o        (Optional) Specify this flag if it's on-site environment.\n  -f        (Optional) Specify this flag if it's you want to see all deployed versions.\n  -r        (Optional) Specify this flag if it's you want to see all deployed versions in raw format.\n\nhelpr get-env-error checks for any error in a deployed environment (Scale-Down issues, POD issues, Error logs). It will also fetch logs for all the error PODs.\n\nget-env-error usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -s        (Optional) Specify the string to search (for example app name).\n  -o        (Optional) Specify this flag if it's on-site environment.\n\nhelpr get-maas-error checks for any error in a deployed environment related to maas. It will automatically fetch the MaaS configuration from the namespace. It will check for MaaS health, MaaS Kafka Users, MaaS Kafka configuration and the configuration done in the target environment.\n\nget-maas-error usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -o        (Optional) Specify this flag if it's on-site environment. On-Site for this operation is currently not implemented.\n\nFind more information at: https://github.com/rudradevpal/helpr/blob/main/README.md" 1>&2
 }
 
 init(){
@@ -699,32 +699,49 @@ get_maas_error(){
   fi
 }
 
-# JUST A SAMPLE FUNCTION
-test(){
-  local OPTIND
-  while getopts ":k:n:t:" options; do
-    case "${options}" in
-      k)
-         KUBECONFIG=${OPTARG};;
-      n)
-         NAMESPACE=${OPTARG};;
-      t)
-         TEST=${OPTARG};;
-      :)
-         echo -e "Error: helpr requires an argument.\n"
-         echo -e "For full guide run helpr help"
-         exit 1;;
-      *)
-         echo -e "Error: helpr requires an argument.\n"
-         echo -e "For full guide run helpr help"
-         exit 1;;
-    esac
-  done
-  echo $KUBECONFIG-$NAMESPACE-$TEST
+# START WEB SERVER
+start_web_server(){  
+  mkdir -p output
+
+  if [ ! -e .web ]
+  then
+      touch .web
+  fi
+
+  if [ ! -s .web ]
+  then
+    echo -e "> WEB-SERVER is not running!"
+  else
+    kill -9 $(cat .web) &> /dev/null
+    echo "" > .web
+  fi
+
+  python3 -m http.server --directory output &>/dev/null &
+  PROCESS_ID=$!
+
+  echo "$PROCESS_ID" > .web
+  echo -e "> WEB-SERVER Started on Port 8000"
 }
 
+# STOP WEB SERVER
+stop_web_server(){
+  if [ ! -e .web ]
+  then
+      touch .web
+  fi
 
-# MAIN SSWITCH CASE
+  if [ ! -s .web ]
+  then
+    echo -e "> WEB-SERVER is not running!"
+  else
+    kill -9 $(cat .web) &> /dev/null
+    echo "" > .web
+    echo -e "> WEB-SERVER stopped!"
+  fi
+
+}
+
+# MAIN SWITCH CASE
 case "$1" in
   init)
     init;;
@@ -738,6 +755,10 @@ case "$1" in
     get_env_errors "${@:2}" ;;
   get-maas-error)
     get_maas_error "${@:2}" ;;
+  start-web)
+    start_web_server;;
+  stop-web)
+    stop_web_server;;
   version)
     version;;
   update-check)
