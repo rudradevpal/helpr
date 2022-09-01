@@ -895,3 +895,4 @@ case "$1" in
     echo -e "Error: helpr requires an operation.\n"
     echo -e "For full guide run helpr help"
     exit 1;;
+esac
