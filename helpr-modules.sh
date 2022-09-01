@@ -19,7 +19,7 @@ help() {
 
 init(){
   local STATUS
-  
+
   echo "Checking if Python3 Installed..."
   STATUS=$(python3 --version &> /dev/null;echo $?)
   if [[ $STATUS -ne 0 ]]
@@ -37,7 +37,7 @@ init(){
   else
     echo "OK"
   fi
-  
+
   echo ""
 
   echo "Checking if PIP3 Installed..."
@@ -57,7 +57,7 @@ init(){
   else
     echo "OK"
   fi
-  
+
   echo ""
 
   echo "Checking if GCloud SDK Installed..."
@@ -98,7 +98,7 @@ init(){
   else
     echo "OK"
   fi
-  
+
   echo ""
 
   echo "Checking if kubectl Installed..."
@@ -139,7 +139,7 @@ init(){
   else
     echo "OK"
   fi
-  
+
   echo ""
 
   echo "Checking if NumPy Installed..."
@@ -160,7 +160,7 @@ init(){
   else
     echo "OK"
   fi
-  
+
   echo ""
 
   echo "Checking if JQ Installed..."
@@ -180,11 +180,11 @@ init(){
   else
     echo "OK"
   fi
-  
+
   echo ""
 
   echo "Checking if GCloud Project is Active..."
-  GCP_PROJECT=$(jq '.gcp_project' config.json | tr -d '[],"')
+  GCP_PROJECT=$(jq '.gcp_project' config/config.json | tr -d '[],"')
   STATUS=$(gcloud config configurations list|grep "$GCP_PROJECT"|awk '{print $2}')
   if [[ "$STATUS" = "True" ]]
   then
@@ -196,7 +196,7 @@ init(){
   echo ""
 
   echo "Creating directory stracture..."
-  STATUS=$(mkdir -p kubeconfig/{local,onsite} &> /dev/null;echo $?)
+  STATUS=$(mkdir -p config/kubeconfig/{local,onsite} &> /dev/null;echo $?)
   if [[ $STATUS -ne 0 ]]
   then
     echo "ERROR"
@@ -204,8 +204,8 @@ init(){
   else
     echo "OK"
   fi
-  
-  echo -e "\nPut local & On-Site kubeconfigs in respective directories under kubeconfig/\n\nPut 'config.json' under root directory of helpr"
+
+  echo -e "\nPut local & On-Site kubeconfigs in respective directories under config/kubeconfig/\n\nPut 'config/config.json' under root directory of helpr"
 }
 
 update-check(){
@@ -248,8 +248,8 @@ update-check(){
 
 # GET KUBECONFIGS CREATED BY USER - ONSITE + LOCAL
 get_kubeconfigs(){
-  ONSITE_KUBECONFIG=$(ls -l kubeconfig/onsite|awk '{print $9}'| tail -n +2)
-  LOCAL_KUBECONFIG=$(ls -l kubeconfig/local|awk '{print $9}'| tail -n +2)
+  ONSITE_KUBECONFIG=$(ls -l config/kubeconfig/onsite|awk '{print $9}'| tail -n +2)
+  LOCAL_KUBECONFIG=$(ls -l config/kubeconfig/local|awk '{print $9}'| tail -n +2)
 
   echo -e "ENVIRONMENT \t KUBECONFIG"
   echo -e "------------ \t -----------"
@@ -297,14 +297,14 @@ get_latest_versions(){
     echo -e "$ERR_MSG"
     exit 1
   fi
-  ARTIFACTS=($(jq '.artifacts|keys' config.json | tr -d '[],"'))
+  ARTIFACTS=($(jq '.artifacts|keys' config/config.json | tr -d '[],"'))
   if [ "$ONSITE_ENV" = true ]
   then
-    GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
-    KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+    GCP_SSH=$(jq '.gcp_vm_ssh_command' config/config.json | tr -d '[],"')
+    KUBECONFIG_CONTENT=$(cat "config/kubeconfig/onsite/"$KUBECONFIG)
     OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get cm version -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'"| jq ".data" | tail -n +2 | head -n -1 > helpr/output; cat helpr/output; exit 0')
   else
-    OUTPUT=$(kubectl get cm version -n $NAMESPACE -o json --kubeconfig="kubeconfig/local/"$KUBECONFIG | jq '.data' | tail -n +2 | head -n -1;)
+    OUTPUT=$(kubectl get cm version -n $NAMESPACE -o json --kubeconfig="config/kubeconfig/local/"$KUBECONFIG | jq '.data' | tail -n +2 | head -n -1;)
   fi
   if [ "$RAW_OUTPUT" = true ]
   then
@@ -323,7 +323,7 @@ get_latest_versions(){
       echo ">> VERSIONS (FULL):"
       for i in "${ARTIFACTS[@]}"
       do
-        ARTIFACT_NAME=$(jq '.artifacts|."'$i'"' config.json| sed -r 's/\"//g')
+        ARTIFACT_NAME=$(jq '.artifacts|."'$i'"' config/config.json| sed -r 's/\"//g')
         VERSION=$(echo "$OUTPUT"|grep "$i.")
 
         while IFS= read -r line ;
@@ -339,7 +339,7 @@ get_latest_versions(){
       echo ">> VERSIONS (LATEST):"
       for i in "${ARTIFACTS[@]}"
       do
-        ARTIFACT_NAME=$(jq '.artifacts|."'$i'"' config.json| sed -r 's/\"//g')
+        ARTIFACT_NAME=$(jq '.artifacts|."'$i'"' config/config.json| sed -r 's/\"//g')
         if [[ "$i" == *"datafix"* ]]
         then
           MULTI_OUTPUT=$(echo "$OUTPUT"|grep "$i.")
@@ -398,11 +398,11 @@ get_pod_logs(){
 
   if [ "$ONSITE_ENV" = true ]
   then
-    GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
-    KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+    GCP_SSH=$(jq '.gcp_vm_ssh_command' config/config.json | tr -d '[],"')
+    KUBECONFIG_CONTENT=$(cat "config/kubeconfig/onsite/"$KUBECONFIG)
     POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0'| tail -n +2 | grep $POD_SEARCH_STRING)
   else
-    POD_OUTPUT=$(kubectl get pods -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep $POD_SEARCH_STRING)
+    POD_OUTPUT=$(kubectl get pods -n $NAMESPACE --kubeconfig="config/kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep $POD_SEARCH_STRING)
   fi
 
   echo -e "$POD_OUTPUT\n"
@@ -414,13 +414,13 @@ get_pod_logs(){
 
     if [ "$ONSITE_ENV" = true ]
     then
-      GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
-      KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+      GCP_SSH=$(jq '.gcp_vm_ssh_command' config/config.json | tr -d '[],"')
+      KUBECONFIG_CONTENT=$(cat "config/kubeconfig/onsite/"$KUBECONFIG)
       OUTPUT=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl logs '"$line"' -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0')
     else
-      OUTPUT=$(kubectl logs $line -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG);
+      OUTPUT=$(kubectl logs $line -n $NAMESPACE --kubeconfig="config/kubeconfig/local/"$KUBECONFIG);
     fi
-    
+
     if [ $? -eq 0 ]; then
       echo "$OUTPUT" > "output/logs/"$line".log"
       echo -e ">>>> Log stored in output/logs/"$line".log"
@@ -469,20 +469,20 @@ get_env_errors(){
 
   if [ "$ONSITE_ENV" = true ]
   then
-    GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
-    KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+    GCP_SSH=$(jq '.gcp_vm_ssh_command' config/config.json | tr -d '[],"')
+    KUBECONFIG_CONTENT=$(cat "config/kubeconfig/onsite/"$KUBECONFIG)
     DEPLOY_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get deploy -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0'| tail -n +2 | grep "$SEARCH_STRING")
   else
-    DEPLOY_OUTPUT=$(kubectl get deploy -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep "$SEARCH_STRING")
+    DEPLOY_OUTPUT=$(kubectl get deploy -n $NAMESPACE --kubeconfig="config/kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep "$SEARCH_STRING")
   fi
 
   if [ "$ONSITE_ENV" = true ]
   then
-    GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
-    KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+    GCP_SSH=$(jq '.gcp_vm_ssh_command' config/config.json | tr -d '[],"')
+    KUBECONFIG_CONTENT=$(cat "config/kubeconfig/onsite/"$KUBECONFIG)
     POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0'| tail -n +2 | grep "$SEARCH_STRING")
   else
-    POD_OUTPUT=$(kubectl get pods -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep "$SEARCH_STRING")
+    POD_OUTPUT=$(kubectl get pods -n $NAMESPACE --kubeconfig="config/kubeconfig/local/"$KUBECONFIG | tail -n +2 | grep "$SEARCH_STRING")
   fi
 
   if [ "$POD_OUTPUT" == "No resources found in $NAMESPACE namespace." ]
@@ -538,21 +538,21 @@ get_env_errors(){
     then
       if [ "$ONSITE_ENV" = true ]
       then
-        GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
-        KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+        GCP_SSH=$(jq '.gcp_vm_ssh_command' config/config.json | tr -d '[],"')
+        KUBECONFIG_CONTENT=$(cat "config/kubeconfig/onsite/"$KUBECONFIG)
         ERR=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pod '"$POD_NAME"' -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'"|jq ".status|.containerStatuses|.[]|.state|.waiting|.message"; exit 0' | tr -d '[],"')
       else
-        ERR=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o json --kubeconfig="kubeconfig/local/"$KUBECONFIG|jq '.status|.containerStatuses|.[]|.state|.waiting|.message' | tr -d '[],"')
+        ERR=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o json --kubeconfig="config/kubeconfig/local/"$KUBECONFIG|jq '.status|.containerStatuses|.[]|.state|.waiting|.message' | tr -d '[],"')
       fi
     elif [[ -z "$ERR" && "$POD_STATUS" = "Pending" ]]
     then
       if [ "$ONSITE_ENV" = true ]
       then
-        GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
-        KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+        GCP_SSH=$(jq '.gcp_vm_ssh_command' config/config.json | tr -d '[],"')
+        KUBECONFIG_CONTENT=$(cat "config/kubeconfig/onsite/"$KUBECONFIG)
         ERR=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pod '"$POD_NAME"' -n '$NAMESPACE' -o json --kubeconfig="helpr/'"$KUBECONFIG"'"|jq ".status|.conditions|.[]|.message";  exit 0' | tr -d '[],"')
       else
-        ERR=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o json --kubeconfig="kubeconfig/local/"$KUBECONFIG|jq '.status|.conditions|.[]|.message' | tr -d '[],"')
+        ERR=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o json --kubeconfig="config/kubeconfig/local/"$KUBECONFIG|jq '.status|.conditions|.[]|.message' | tr -d '[],"')
       fi
     elif [[ -z "$ERR" && "$POD_STATUS" = "Completed" ]]
     then
@@ -561,11 +561,11 @@ get_env_errors(){
     then
       if [ "$ONSITE_ENV" = true ]
       then
-        GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
-        KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+        GCP_SSH=$(jq '.gcp_vm_ssh_command' config/config.json | tr -d '[],"')
+        KUBECONFIG_CONTENT=$(cat "config/kubeconfig/onsite/"$KUBECONFIG)
         OUTPUT=$(${GCP_SSH} --ssh-flag='-qn' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl logs '"$POD_NAME"' -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0')
       else
-        OUTPUT=$(kubectl logs "$POD_NAME" -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG);
+        OUTPUT=$(kubectl logs "$POD_NAME" -n $NAMESPACE --kubeconfig="config/kubeconfig/local/"$KUBECONFIG);
       fi
 
       if [[ $? -eq 0 && ! -z "$OUTPUT" ]]
@@ -625,12 +625,12 @@ get_maas_error(){
     echo "ONSITE get-maas-error is not currently available"
     echo -e "$ERR_MSG"
     exit 1
-    # GCP_SSH=$(jq '.gcp_vm_ssh_command' config.json | tr -d '[],"')
-    # KUBECONFIG_CONTENT=$(cat "kubeconfig/onsite/"$KUBECONFIG)
+    # GCP_SSH=$(jq '.gcp_vm_ssh_command' config/config.json | tr -d '[],"')
+    # KUBECONFIG_CONTENT=$(cat "config/kubeconfig/onsite/"$KUBECONFIG)
     # POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0'| tail -n +2 | grep $POD_SEARCH_STRING)
   else
-    MAAS_NAMESPACE=$(kubectl get deployments --output=jsonpath="{.items[*].spec.template.spec.containers[*].env[?(@.name==\"MAAS_INTERNAL_ADDRESS\")]}" -n $NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | jq '.value'|sed -e "s/http:\/\///g" | sed -e "s/\"//g" | sed -e "s/\:8080//g"| awk -F'.' '{print $2}')
-    MAAS_INGRESS="https://"$(kubectl get ingress -n $MAAS_NAMESPACE --kubeconfig="kubeconfig/local/"$KUBECONFIG | tail -n +2 | awk '{print $3}')
+    MAAS_NAMESPACE=$(kubectl get deployments --output=jsonpath="{.items[*].spec.template.spec.containers[*].env[?(@.name==\"MAAS_INTERNAL_ADDRESS\")]}" -n $NAMESPACE --kubeconfig="config/kubeconfig/local/"$KUBECONFIG | jq '.value'|sed -e "s/http:\/\///g" | sed -e "s/\"//g" | sed -e "s/\:8080//g"| awk -F'.' '{print $2}')
+    MAAS_INGRESS="https://"$(kubectl get ingress -n $MAAS_NAMESPACE --kubeconfig="config/kubeconfig/local/"$KUBECONFIG | tail -n +2 | awk '{print $3}')
     MAAS_HEALTH=$(curl -ks --request GET $MAAS_INGRESS"/health")
   fi
   echo -e ">> MaaS URL: $MAAS_INGRESS\n"
@@ -640,13 +640,13 @@ get_maas_error(){
   then
     echo ">> MaaS Health ERROR: "$MAAS_HEALTH
   else
-    MAAS_TOKEN=$(jq '.maas_auth_token' config.json | tr -d '[],"')
+    MAAS_TOKEN=$(jq '.maas_auth_token' config/config.json | tr -d '[],"')
     MAAS_KAFKA_CONFIG=$(curl -sk --request GET $MAAS_INGRESS'/api/v1/kafka/instances' --header 'Authorization: Basic '$MAAS_TOKEN)
     KAFKA_SECURITY_PROTOCOL_CONFIG=$(echo "$MAAS_KAFKA_CONFIG" | jq '.[] |.addresses|keys[]'  | sed -e "s/\"//g" )
     KAFKA_AUTHENTICATION_USERS=$(echo "$MAAS_KAFKA_CONFIG" | jq '.[] |.credentials|keys[]'  | sed -e "s/\"//g" )
-        
+
     USERS_ARRAY=($KAFKA_AUTHENTICATION_USERS)
-    
+
     for u in "${USERS_ARRAY[@]}"; do
       if [[ "$u" == "client" ]]; then
           USER_PRESENT=true
@@ -672,10 +672,10 @@ get_maas_error(){
     echo -e ">> Current Kafka configuration in MaaS\nKAFKA_SASL_MECHANISM=$KAFKA_SASL_MECHANISM\nKAFKA_SECURITY_PROTOCOL_CONFIG=$KAFKA_SECURITY_PROTOCOL_CONFIG\nKAFKA_AUTHENTICATION_MECHANISM=$KAFKA_AUTHENTICATION_MECHANISM"
     echo ""
 
-    CURRENT_KAFKA_SASL_MECHANISM=$(kubectl get deploy dpt-data-access --namespace=wireless-ci1 -o json  --kubeconfig="kubeconfig/local/kube_sow501"| jq '.spec|.template|.spec|.containers|.[0]|.env|.[]|select(.name == "KAFKA_SASL_MECHANISM")|.value' | sed -e "s/\"//g")
-    CURRENT_KAFKA_SECURITY_PROTOCOL_CONFIG=$(kubectl get deploy dpt-data-access --namespace=wireless-ci1 -o json  --kubeconfig="kubeconfig/local/kube_sow501"| jq '.spec|.template|.spec|.containers|.[0]|.env|.[]|select(.name == "KAFKA_SECURITY_PROTOCOL_CONFIG")|.value' | sed -e "s/\"//g")
-    CURRENT_KAFKA_AUTHENTICATION_MECHANISM=$(kubectl get deploy dpt-data-access --namespace=wireless-ci1 -o json  --kubeconfig="kubeconfig/local/kube_sow501"| jq '.spec|.template|.spec|.containers|.[0]|.env|.[]|select(.name == "KAFKA_AUTHENTICATION_MECHANISM")|.value' | sed -e "s/\"//g")
-    
+    CURRENT_KAFKA_SASL_MECHANISM=$(kubectl get deploy dpt-data-access --namespace=wireless-ci1 -o json  --kubeconfig="config/kubeconfig/local/kube_sow501"| jq '.spec|.template|.spec|.containers|.[0]|.env|.[]|select(.name == "KAFKA_SASL_MECHANISM")|.value' | sed -e "s/\"//g")
+    CURRENT_KAFKA_SECURITY_PROTOCOL_CONFIG=$(kubectl get deploy dpt-data-access --namespace=wireless-ci1 -o json  --kubeconfig="config/kubeconfig/local/kube_sow501"| jq '.spec|.template|.spec|.containers|.[0]|.env|.[]|select(.name == "KAFKA_SECURITY_PROTOCOL_CONFIG")|.value' | sed -e "s/\"//g")
+    CURRENT_KAFKA_AUTHENTICATION_MECHANISM=$(kubectl get deploy dpt-data-access --namespace=wireless-ci1 -o json  --kubeconfig="config/kubeconfig/local/kube_sow501"| jq '.spec|.template|.spec|.containers|.[0]|.env|.[]|select(.name == "KAFKA_AUTHENTICATION_MECHANISM")|.value' | sed -e "s/\"//g")
+
     if [[ "$CURRENT_KAFKA_SASL_MECHANISM" == "$KAFKA_SASL_MECHANISM" && "$CURRENT_KAFKA_SECURITY_PROTOCOL_CONFIG" == "$KAFKA_SECURITY_PROTOCOL_CONFIG" && "$CURRENT_KAFKA_AUTHENTICATION_MECHANISM" == "$KAFKA_AUTHENTICATION_MECHANISM" ]]
     then
       echo ">> Namespace $NAMESPACE is configured correctly!"
@@ -699,8 +699,132 @@ get_maas_error(){
   fi
 }
 
+# DELIVERY
+delivery(){
+  local OPTIND
+  local ONSITE_ENV=false
+  local ERR_MSG="Error: helpr get-maas-error - please provide correct flags\n\nhelpr get-maas-error checks for any error in a deployed environment related to maas. It will automatically fetch the MaaS configuration from the namespace. It will check for MaaS health, MaaS Kafka Users, MaaS Kafka configuration and the configuration done in the target environment.\n\n For more operations of helpr run\n     helpr help\n\n Find more information at: https://github.com/rudradevpal/helpr/blob/main/README.md\n\nget-maas-error usage:\n  -k        Specify the name of kubeconfig file of the target environment. To get list of all kubeconfigs run 'helpr get-kubeconfigs'.\n  -n        Specify the namespace of the target environment.\n  -o        (Optional) Specify this flag if it's on-site environment. On-Site for this operation is currently not implemented."
+
+  while getopts ":k:n:d:o" options; do
+    case "${options}" in
+      k)
+         KUBECONFIG=${OPTARG};;
+      n)
+         NAMESPACE=${OPTARG};;
+      d)
+         DELIVERY_PROFILE=${OPTARG};;
+      o)
+         ONSITE_ENV=true;;
+      :)
+         echo -e "$ERR_MSG"
+         exit 1;;
+      *)
+         echo -e "$ERR_MSG"
+         exit 1;;
+    esac
+  done
+
+  if [[ -z "$KUBECONFIG" || -z "$NAMESPACE" ]]
+  then
+    echo -e "$ERR_MSG"
+    exit 1
+  fi
+
+  echo -e "> Starting delivery\n"
+
+  local ADG_URL=$(jq '.adg_url' config/config.json | tr -d '[],"')
+  local ADG_JOB_URL=$(jq '.adg_job_url' config/config.json | tr -d '[],"')
+  local ADG_DESCRIPTOR_URL=$(jq '.adg_descriptor_url' config/config.json | tr -d '[],"')
+  local ADG_JENKINS_USER=$(jq '.adg_jenkins_username' config/config.json | tr -d '[],"')
+  local ADG_JENKINS_TOKEN=$(jq '.adg_jenkins_token' config/config.json | tr -d '[],"')
+  local ADG_SSH_IP=$(jq '.adg_ssh_ip' config/config.json | tr -d '[],"')
+  local ADG_SSH_USER=$(jq '.adg_ssh_username' config/config.json | tr -d '[],"')
+  local ADG_SSH_KEY="config/keys/"$(jq '.adg_ssh_key_name' config/config.json | tr -d '[],"')
+
+  if [ "$ONSITE_ENV" = true ]
+  then
+    echo "ONSITE delivery is not currently available"
+    echo -e "$ERR_MSG"
+    exit 1
+    # GCP_SSH=$(jq '.gcp_vm_ssh_command' config/config.json | tr -d '[],"')
+    # KUBECONFIG_CONTENT=$(cat "config/kubeconfig/onsite/"$KUBECONFIG)
+    # POD_OUTPUT=$(${GCP_SSH} --ssh-flag='-q' --command 'mkdir -p helpr; echo "'"$KUBECONFIG_CONTENT"'" > helpr/'$KUBECONFIG'; kubectl get pods -n '$NAMESPACE' --kubeconfig="helpr/'"$KUBECONFIG"'"; exit 0'| tail -n +2 | grep $POD_SEARCH_STRING)
+  else
+    echo -n ""
+  fi
+
+  echo -e ">> Fecthing Jenkins CRUMB"
+  local ADG_JENKINS_CRUMB=$(curl -sq --user "$ADG_JENKINS_USER":"$ADG_JENKINS_TOKEN" "$ADG_URL/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)")
+  echo -e ">> Starting ADG Build"
+
+  #local ADG_JENKINS_BUILD_QUEUE_NO=$(curl -is --request POST --user "$ADG_JENKINS_USER":"$ADG_JENKINS_TOKEN" -H "$ADG_JENKINS_CRUMB" "$ADG_JOB_URL"'/buildWithParameters?SOLUTION_DESCRIPTOR='"$ADG_DESCRIPTOR_URL"'&SUB_FOLDER=applications&DELIVERY_RESOLVED=false'|grep location)
+  local ADG_JENKINS_BUILD_QUEUE_NO="location: https://app-delivery-gateway.netcracker.com/queue/item/915/" ##
+
+  local ADG_JENKINS_BUILD_QUEUE_NO=$(echo "$ADG_JENKINS_BUILD_QUEUE_NO"| awk -F'/' '{print $6}')
+
+  echo "$ADG_JENKINS_BUILD_QUEUE_NO"  ##
+
+  # sleep 10
+  sleep 1 ##
+
+  # local ADG_JENKINS_BUILD_NO=$(curl -s --user "$ADG_JENKINS_USER":"$ADG_JENKINS_TOKEN" -H "$ADG_JENKINS_CRUMB" 'https://app-delivery-gateway.netcracker.com/queue/item/'$ADG_JENKINS_BUILD_QUEUE_NO'/api/json?pretty=true'|jq '.executable|.number')
+  local ADG_JENKINS_BUILD_NO="880" ##
+  echo "$ADG_JENKINS_BUILD_NO" ##
+
+  echo -e ">> ADG Build Started: $ADG_JOB_URL/$ADG_JENKINS_BUILD_NO"
+  echo -e ">> Waiting for the build to complete"
+
+  local TIMEOUT=0
+  while [ $TIMEOUT -lt 1800 ]
+  do
+    ADG_BUILD_STATUS_RAW=$(curl -s --user "$ADG_JENKINS_USER":"$ADG_JENKINS_TOKEN" -H "$ADG_JENKINS_CRUMB" "$ADG_JOB_URL/$ADG_JENKINS_BUILD_NO/api/json?pretty=true")
+    ADG_BUILD_STATUS=$(echo "$ADG_BUILD_STATUS_RAW"|jq '.result' | tr -d '[],"')
+
+    if [[ "$ADG_BUILD_STATUS" == "UNSTABLE" || "$ADG_BUILD_STATUS" == "SUCCESS" || "$ADG_BUILD_STATUS" == "FAILURE" || "$ADG_BUILD_STATUS" == "ABORTED" ]]
+    then
+      break
+    else
+      sleep 30
+      TIMEOUT=`expr $TIMEOUT + 30`
+    fi
+
+  done
+
+  if [[ "$ADG_BUILD_STATUS" == "UNSTABLE" || "$ADG_BUILD_STATUS" == "SUCCESS" ]]
+  then
+    echo ">> ADG Build completed with status: $ADG_BUILD_STATUS"
+  elif [[ "$ADG_BUILD_STATUS" == "FAILURE" || "$ADG_BUILD_STATUS" == "ABORTED" ]]
+  then
+    echo ">> ADG Build failed with status: $ADG_BUILD_STATUS"
+    exit 1
+  else
+    echo ">> ADG Build status polling TIMEOUT"
+    exit 1
+  fi
+
+  local ADG_BUILD_DIR=$(echo "$ADG_BUILD_STATUS_RAW"|jq '.description' | tr -d '[],"'| awk -F'<br>' '{print $1}'| sed 's|\(.*\)/.*|\1|')
+  local ADG_BUILD_ARCHIVE=$(echo "$ADG_BUILD_STATUS_RAW"|jq '.description' | tr -d '[],"'| awk -F'<br>' '{print $1}'| sed 's|.*/||')
+  echo "$ADG_BUILD_DIR"
+  echo "$ADG_BUILD_ARCHIVE"
+  local ADG_BUILD_ARCHIVE_EXTRACT_DIR=$(echo $ADG_BUILD_ARCHIVE| awk -F'.tar' '{print $1}')
+
+  echo "$ADG_BUILD_ARCHIVE_EXTRACT_DIR"
+
+  sudo chmod 0600 "$ADG_SSH_KEY"
+
+  local MAVEN_URL=$(jq '.artifactory_mavenUrl' config/delivery_profiles/"$DELIVERY_PROFILE".json | tr -d '[],"')
+  local DOCKER_URL=$(jq '.artifactory_dockerUrl' config/delivery_profiles/"$DELIVERY_PROFILE".json | tr -d '[],"')
+  local NEXUS_LOGIN=$(jq '.artifactory_nexus_login' config/delivery_profiles/"$DELIVERY_PROFILE".json | tr -d '[],"')
+  local NEXUS_PASSWORD=$(jq '.artifactory_nexus_password' config/delivery_profiles/"$DELIVERY_PROFILE".json | tr -d '[],"')
+  local SET_ENV_CONTENT="# Maven and Docker coordinates\nexport mavenUrl=\"'$MAVEN_URL'\"\nexport dockerUrl='$DOCKER_URL'\nNEXUS_LOGIN=$NEXUS_LOGIN\nNEXUS_PASSWORD=$NEXUS_PASSWORD"
+
+  TEST=$(ssh -i "$ADG_SSH_KEY" "$ADG_SSH_USER"@"$ADG_SSH_IP" "cd $ADG_BUILD_DIR; sudo tar -xvf $ADG_BUILD_ARCHIVE &> /dev/null; cd $ADG_BUILD_ARCHIVE_EXTRACT_DIR; echo -e '$SET_ENV_CONTENT' | sudo tee setEnv.sh > /dev/null")
+  echo "$TEST"
+
+}
+
 # START WEB SERVER
-start_web_server(){  
+start_web_server(){
   mkdir -p output
 
   if [ ! -e .web ]
@@ -755,6 +879,8 @@ case "$1" in
     get_env_errors "${@:2}" ;;
   get-maas-error)
     get_maas_error "${@:2}" ;;
+  start-delivery)
+    delivery "${@:2}" ;;
   start-web)
     start_web_server;;
   stop-web)
@@ -769,4 +895,3 @@ case "$1" in
     echo -e "Error: helpr requires an operation.\n"
     echo -e "For full guide run helpr help"
     exit 1;;
-esac
